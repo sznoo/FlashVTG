@@ -9,6 +9,7 @@ This repository is the official implementation of the paper **FlashVTG: Feature 
 [**Preparation**](#-Preparation) | [**Training**](#-training) | [**Inference and Evaluation**](#-Inference-and-Evaluation) | [**Model Zoo**](#-model-zoo)
 
 <p align="center"><img width="850" src="figure/model.png"></p>
+
 ## 🔨 Preparation
 
 1. Set up the environment for running the experiments.
@@ -29,7 +30,7 @@ This repository is the official implementation of the paper **FlashVTG: Feature 
 
    For feature extracted by InternVideo2, you can download from [Hugging Face](https://huggingface.co/datasets/cg1177/qvhighlight_internvideo2_videoclip_6b_w2s).
 
-# 🏋️ Training
+## 🏋️ Training
 
 We provide training scripts for all datasets in `FlashVTG/scripts/` directory.
 
