@@ -1,6 +1,6 @@
 # FlashVTG: Feature Layering and Adaptive Score Handling Network for Video Temporal Grounding
 
-This repository is the official implementation of the paper **FlashVTG: Feature Layering and Adaptive Score Handling Network for Video Temporal Grounding**.
+This repository is the official implementation of the paper **FlashVTG: Feature Layering and Adaptive Score Handling Network for Video Temporal Grounding**. (WACV 2025)
 
 > Zhuo Cao, Bingqing Zhang, Heming Du, Xin Yu, Xue Li, Sen Wang
 >
