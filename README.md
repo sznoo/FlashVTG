@@ -101,8 +101,22 @@ We provide multiple checkpoints and training logs here. Configuration can be fin
 | Charades (InternVideo2)        | [checkpoint and trainng log](https://www.dropbox.com/scl/fo/vxzx7o6221w35wx58655k/AN0tWBPRsvW9akunEYFSO0U?rlkey=8yt1guzfqqybiim4l5nfw4siy&st=xsp6juc9&dl=0) |
 | Charades (VGG)                 | [checkpoint and trainng log](https://www.dropbox.com/scl/fo/2z5o51f4fmirduzdz6jw6/AEOjqAtcKdYgBKZDuIfqzjw?rlkey=7xyai6h0ct5npcr4jwja4vjkc&st=25wjllzd&dl=0) |
 | TACoS                          | [checkpoint and trainng log](https://www.dropbox.com/scl/fo/ul45aq5zkgzzb8k9wh70p/AL1rSpma3xwkhyHvMvWjFkc?rlkey=4ed8t64t7tdg3wssveoosvr82&st=xpmp5r9a&dl=0) |
+| TVSum                          | [checkpoint](https://www.dropbox.com/scl/fo/yb11hjhlhbclun6mupg7g/ABvPUxY1Hd2IiBiLd2zqr6o?rlkey=gehlfpywyh0sou3g89xb61jin&st=1qq78uu0&dl=0) |
 
+## 🎓 Citation
 
+If you find our work helps, please cite our paper.
+
+```
+@InProceedings{Cao_2025_WACV,
+    author    = {Cao, Zhuo and Zhang, Bingqing and Du, Heming and Yu, Xin and Li, Xue and Wang, Sen},
+    title     = {FlashVTG: Feature Layering and Adaptive Score Handling Network for Video Temporal Grounding},
+    booktitle = {Proceedings of the Winter Conference on Applications of Computer Vision (WACV)},
+    month     = {February},
+    year      = {2025},
+    pages     = {9208-9218}
+}
+```
 
 # Acknowledgements
 
