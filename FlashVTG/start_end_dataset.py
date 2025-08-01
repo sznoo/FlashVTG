@@ -13,48 +13,50 @@ import torch.nn as nn
 logger = logging.getLogger(__name__)
 
 
-# TVSUM_SPLITS = {
-#     'BK': {
-#         'train': ['WxtbjNsCQ8A', 'EE-bNr36nyA', 'oDXZc0tZe04', 'uGu_10sucQo'],
-#         'val': ['Se3oxnaPsz0']
-#     },
-#     'BT': {
-#         'train': ['eQu1rNs0an0', 'qqR6AEXwxoQ', 'EYqVtI9YWJA', 'iVt07TCkFM0'],
-#         'val': ['JgHubY5Vw3Y']
-#     },
-#     'DS': {
-#         'train': ['kLxoNp-UchI', 'NyBmCxDoHJU', 'jcoYJXDG9sw', '-esJrBWj2d8'],
-#         'val': ['E11zDS9XGzg']
-#     },
-#     'FM': {
-#         'train': ['_xMr-HKMfVA', 'byxOvuiIJV0', 'VuWGsYPqAX8', 'xmEERLqJ2kU'],
-#         'val': ['JKpqYvAdIsw']
-#     },
-#     'GA': {
-#         'train': ['xxdtq8mxegs', 'i3wAGJaaktw', '0tmA_C6XwfM', '3eYKfiOEJNs'],
-#         'val': ['Bhxk-O1Y7Ho']
-#     },
-#     'MS': {
-#         'train': ['Hl-__g2gn_A', 'WG0MBPpPC6I', 'LRw_obCPUt0', '37rzWOQsNIw'],
-#         'val': ['Yi4Ij2NM7U4']
-#     },
-#     'PK': {
-#         'train': ['GsAD1KT1xo8', 'XkqCExn6_Us', 'b626MiF1ew4', 'PJrm840pAUI'],
-#         'val': ['cjibtmSLxQ4']
-#     },
-#     'PR': {
-#         'train': ['RBCABdttQmI', 'z_6gVvQb2d0', '4wU_LUjG5Ic', '91IHQYk1IQM'],
-#         'val': ['fWutDQy1nnY']
-#     },
-#     'VT': {
-#         'train': ['gzDbaEs1Rlg', 'XzYM3PfTM4w', '98MoyGZKHXc', 'AwmHb44_ouw'],
-#         'val': ['J0nA4VgnoCo']
-#     },
-#     'VU': {
-#         'train': ['akI8YFjEmUw', 'HT5vyqe0Xaw', 'vdmoEJ5YbrQ', 'xwqBXPGE9pQ'],
-#         'val': ['sTEELN-vY30']
-#     }
-# }
+TVSUM_SPLITS = {
+    "BK": {
+        "train": ["WxtbjNsCQ8A", "EE-bNr36nyA", "oDXZc0tZe04", "uGu_10sucQo"],
+        "val": ["Se3oxnaPsz0"],
+    },
+    "BT": {
+        "train": ["eQu1rNs0an0", "qqR6AEXwxoQ", "EYqVtI9YWJA", "iVt07TCkFM0"],
+        "val": ["JgHubY5Vw3Y"],
+    },
+    "DS": {
+        "train": ["kLxoNp-UchI", "NyBmCxDoHJU", "jcoYJXDG9sw", "-esJrBWj2d8"],
+        "val": ["E11zDS9XGzg"],
+    },
+    "FM": {
+        "train": ["_xMr-HKMfVA", "byxOvuiIJV0", "VuWGsYPqAX8", "xmEERLqJ2kU"],
+        "val": ["JKpqYvAdIsw"],
+    },
+    "GA": {
+        "train": ["xxdtq8mxegs", "i3wAGJaaktw", "0tmA_C6XwfM", "3eYKfiOEJNs"],
+        "val": ["Bhxk-O1Y7Ho"],
+    },
+    "MS": {
+        "train": ["Hl-__g2gn_A", "WG0MBPpPC6I", "LRw_obCPUt0", "37rzWOQsNIw"],
+        "val": ["Yi4Ij2NM7U4"],
+    },
+    "PK": {
+        "train": ["GsAD1KT1xo8", "XkqCExn6_Us", "b626MiF1ew4", "PJrm840pAUI"],
+        "val": ["cjibtmSLxQ4"],
+    },
+    "PR": {
+        "train": ["RBCABdttQmI", "z_6gVvQb2d0", "4wU_LUjG5Ic", "91IHQYk1IQM"],
+        "val": ["fWutDQy1nnY"],
+    },
+    "VT": {
+        "train": ["gzDbaEs1Rlg", "XzYM3PfTM4w", "98MoyGZKHXc", "AwmHb44_ouw"],
+        "val": ["J0nA4VgnoCo"],
+    },
+    "VU": {
+        "train": ["akI8YFjEmUw", "HT5vyqe0Xaw", "vdmoEJ5YbrQ", "xwqBXPGE9pQ"],
+        "val": ["sTEELN-vY30"],
+    },
+}
+
+
 class StartEndDataset(Dataset):
     Q_FEAT_TYPES = ["pooler_output", "last_hidden_state", "features"]
     """One line in data loaded from data_path."
@@ -122,56 +124,56 @@ class StartEndDataset(Dataset):
         self.data = self.load_data()
 
         # load specific domain data for tvsum dataset
-        # if self.dset_name in ["tvsum", "tvsum_sfc"]:
-        #     target_domain = dset_domain
-        #     assert target_domain in [
-        #         "BK",
-        #         "BT",
-        #         "DS",
-        #         "FM",
-        #         "GA",
-        #         "MS",
-        #         "PK",
-        #         "PR",
-        #         "VT",
-        #         "VU",
-        #     ]
+        if self.dset_name in ["tvsum", "tvsum_sfc"]:
+            target_domain = dset_domain
+            assert target_domain in [
+                "BK",
+                "BT",
+                "DS",
+                "FM",
+                "GA",
+                "MS",
+                "PK",
+                "PR",
+                "VT",
+                "VU",
+            ]
 
-        #     new_data = []
-        #     for d in self.data:
-        #         if target_domain == d["domain"]:
-        #             new_data.append(d)
-        #     self.data = new_data
+            new_data = []
+            for d in self.data:
+                if target_domain == d["domain"]:
+                    new_data.append(d)
+            self.data = new_data
 
         # load specific domain data for youtube-hl dataset
-        # if self.dset_name == "youtube_uni":
-        #     target_domain = dset_domain
-        #     assert target_domain in [
-        #         "dog",
-        #         "gymnastics",
-        #         "parkour",
-        #         "skating",
-        #         "skiing",
-        #         "surfing",
-        #     ]
+        if self.dset_name == "youtube_uni":
+            target_domain = dset_domain
+            assert target_domain in [
+                "dog",
+                "gymnastics",
+                "parkour",
+                "skating",
+                "skiing",
+                "surfing",
+            ]
 
-        #     new_data = []
-        #     for d in self.data:
-        #         if target_domain == d["domain"]:
-        #             new_data.append(d)
-        #     self.data = new_data
+            new_data = []
+            for d in self.data:
+                if target_domain == d["domain"]:
+                    new_data.append(d)
+            self.data = new_data
 
         self.use_glove = False
         self.use_glove = "vgg" in self.v_feat_dirs[0]
 
-        # if self.dset_name == "charadesSTA" and self.use_glove:
-        #     self.vocab = vocab.pretrained_aliases["glove.6B.300d"]()
-        #     self.vocab.itos.extend(["<unk>"])
-        #     self.vocab.stoi["<unk>"] = self.vocab.vectors.shape[0]
-        #     self.vocab.vectors = torch.cat(
-        #         (self.vocab.vectors, torch.zeros(1, self.vocab.dim)), dim=0
-        #     )
-        #     self.embedding = nn.Embedding.from_pretrained(self.vocab.vectors)
+        if self.dset_name == "charadesSTA" and self.use_glove:
+            self.vocab = vocab.pretrained_aliases["glove.6B.300d"]()
+            self.vocab.itos.extend(["<unk>"])
+            self.vocab.stoi["<unk>"] = self.vocab.vectors.shape[0]
+            self.vocab.vectors = torch.cat(
+                (self.vocab.vectors, torch.zeros(1, self.vocab.dim)), dim=0
+            )
+            self.embedding = nn.Embedding.from_pretrained(self.vocab.vectors)
 
         # Load all data into memory
         self._preload_data()
@@ -224,31 +226,30 @@ class StartEndDataset(Dataset):
             else:
                 model_inputs["video_feat"] = tef
 
-        # if self.dset_name in ["tvsum"]:
-        #     model_inputs["span_labels"] = torch.tensor([[0.0, 0.0]])
-        #     meta_label = meta["label"]
-        #     (
-        #         model_inputs["saliency_pos_labels"],
-        #         model_inputs["saliency_neg_labels"],
-        #         model_inputs["saliency_all_labels"],
-        #     ) = self.get_saliency_labels_all_tvsum(meta_label, ctx_l)
-        #     if len(model_inputs["saliency_all_labels"]) != len(
-        #         model_inputs["video_feat"]
-        #     ):
-        #         model_inputs["video_feat"] = model_inputs["video_feat"][
-        #             : len(model_inputs["saliency_all_labels"])
-        #         ]
+        if self.dset_name in ["tvsum"]:
+            model_inputs["span_labels"] = torch.tensor([[0.0, 0.0]])
+            meta_label = meta["label"]
+            (
+                model_inputs["saliency_pos_labels"],
+                model_inputs["saliency_neg_labels"],
+                model_inputs["saliency_all_labels"],
+            ) = self.get_saliency_labels_all_tvsum(meta_label, ctx_l)
+            if len(model_inputs["saliency_all_labels"]) != len(
+                model_inputs["video_feat"]
+            ):
+                model_inputs["video_feat"] = model_inputs["video_feat"][
+                    : len(model_inputs["saliency_all_labels"])
+                ]
 
-        # elif self.dset_name == "youtube_uni":
-        #     model_inputs["span_labels"] = torch.tensor([[0.0, 0.0]])
-        #     meta_label = meta["label"]
-        #     (
-        #         model_inputs["saliency_pos_labels"],
-        #         model_inputs["saliency_neg_labels"],
-        #         model_inputs["saliency_all_labels"],
-        #     ) = self.get_saliency_labels_all_youtube(meta_label, ctx_l)
-        if False:
-            assert True, "This dataset is not supported yet."
+        elif self.dset_name == "youtube_uni":
+            model_inputs["span_labels"] = torch.tensor([[0.0, 0.0]])
+            meta_label = meta["label"]
+            (
+                model_inputs["saliency_pos_labels"],
+                model_inputs["saliency_neg_labels"],
+                model_inputs["saliency_all_labels"],
+            ) = self.get_saliency_labels_all_youtube(meta_label, ctx_l)
+
         else:
             if "relevant_windows" in meta:  ## For Qvhighlights test set
                 model_inputs["span_labels"] = self.get_span_labels(
@@ -512,28 +513,27 @@ class StartEndDataset(Dataset):
         return windows
 
     def _get_query_feat_by_qid(self, qid):
-        # if self.dset_name == "tvsum":
-        #     q_feat = np.load(
-        #         join(self.q_feat_dir, "{}.npz".format(qid))
-        #     )  # 'token', 'text'
-        #     return torch.from_numpy(q_feat["last_hidden_state"])
-        #     # return torch.from_numpy(q_feat['token'])
-        # # youtube-hl
-        # elif self.dset_name == "youtube_uni":
-        #     q_feat = np.load(join(self.q_feat_dir, "{}.npz".format(qid)))
-        #     return torch.from_numpy(q_feat["last_hidden_state"])
+        if self.dset_name == "tvsum":
+            q_feat = np.load(
+                join(self.q_feat_dir, "{}.npz".format(qid))
+            )  # 'token', 'text'
+            return torch.from_numpy(q_feat["last_hidden_state"])
+            # return torch.from_numpy(q_feat['token'])
+        # youtube-hl
+        elif self.dset_name == "youtube_uni":
+            q_feat = np.load(join(self.q_feat_dir, "{}.npz".format(qid)))
+            return torch.from_numpy(q_feat["last_hidden_state"])
 
-        # elif self.dset_name in ["tacos", "nlq"]:
-        #     q_feat_path = join(self.q_feat_dir, f"{qid}.npz")
-        #     q_feat = np.load(q_feat_path)[self.q_feat_type].astype(np.float32)
-        #     if self.q_feat_type == "last_hidden_state":
-        #         q_feat = q_feat[: self.max_q_l]
-        #     if self.normalize_t:
-        #         q_feat = l2_normalize_np_array(q_feat)
-        #     if self.txt_drop_ratio > 0:
-        #         q_feat = self.random_drop_rows(q_feat)
-        if False:
-            assert True, "This dataset is not supported yet."
+        elif self.dset_name in ["tacos", "nlq"]:
+            q_feat_path = join(self.q_feat_dir, f"{qid}.npz")
+            q_feat = np.load(q_feat_path)[self.q_feat_type].astype(np.float32)
+            if self.q_feat_type == "last_hidden_state":
+                q_feat = q_feat[: self.max_q_l]
+            if self.normalize_t:
+                q_feat = l2_normalize_np_array(q_feat)
+            if self.txt_drop_ratio > 0:
+                q_feat = self.random_drop_rows(q_feat)
+
         else:
             try:
                 # QVhighlight dataset
@@ -570,61 +570,60 @@ class StartEndDataset(Dataset):
         return embeddings
 
     def _get_video_feat_by_vid(self, vid):
-        # if self.dset_name == "tvsum":
-        #     v_feat_list = []
-        #     for _feat_dir in self.v_feat_dirs:
-        #         try:
-        #             _feat_path = join(_feat_dir, f"{vid}_rgb.npy")
-        #             _feat_rgb = np.load(_feat_path)[: self.max_v_l].astype(np.float32)
+        if self.dset_name == "tvsum":
+            v_feat_list = []
+            for _feat_dir in self.v_feat_dirs:
+                try:
+                    _feat_path = join(_feat_dir, f"{vid}_rgb.npy")
+                    _feat_rgb = np.load(_feat_path)[: self.max_v_l].astype(np.float32)
 
-        #             _feat_path = join(_feat_dir, f"{vid}_opt.npy")
-        #             _feat_opt = np.load(_feat_path)[: self.max_v_l].astype(np.float32)
+                    _feat_path = join(_feat_dir, f"{vid}_opt.npy")
+                    _feat_opt = np.load(_feat_path)[: self.max_v_l].astype(np.float32)
 
-        #             _feat = np.concatenate([_feat_rgb, _feat_opt], axis=-1)
-        #         except:
-        #             try:
-        #                 _feat_path = join(_feat_dir, f"{vid}.npy")
-        #                 _feat = np.load(_feat_path)[: self.max_v_l].astype(np.float32)
-        #             except:
-        #                 _feat_path = join(_feat_dir, f"{vid}.npz")
-        #                 _feat = np.load(_feat_path)["features"][: self.max_v_l].astype(
-        #                     np.float32
-        #                 )
+                    _feat = np.concatenate([_feat_rgb, _feat_opt], axis=-1)
+                except:
+                    try:
+                        _feat_path = join(_feat_dir, f"{vid}.npy")
+                        _feat = np.load(_feat_path)[: self.max_v_l].astype(np.float32)
+                    except:
+                        _feat_path = join(_feat_dir, f"{vid}.npz")
+                        _feat = np.load(_feat_path)["features"][: self.max_v_l].astype(
+                            np.float32
+                        )
 
-        #         # _feat = _feat_rgb
-        #         if self.normalize_v:
-        #             _feat = l2_normalize_np_array(_feat)
-        #         v_feat_list.append(_feat)
-        #     # some features are slightly longer than the others
-        #     min_len = min([len(e) for e in v_feat_list])
-        #     v_feat_list = [e[:min_len] for e in v_feat_list]
-        #     v_feat = np.concatenate(v_feat_list, axis=1)
+                # _feat = _feat_rgb
+                if self.normalize_v:
+                    _feat = l2_normalize_np_array(_feat)
+                v_feat_list.append(_feat)
+            # some features are slightly longer than the others
+            min_len = min([len(e) for e in v_feat_list])
+            v_feat_list = [e[:min_len] for e in v_feat_list]
+            v_feat = np.concatenate(v_feat_list, axis=1)
 
-        # elif self.dset_name == "youtube_uni":
-        #     v_feat_list = []
-        #     for _feat_dir in self.v_feat_dirs:
-        #         # Only single npz files per directory
-        #         try:
-        #             _feat_path = join(_feat_dir, f"{vid}.npz")
-        #             _feat = np.load(_feat_path)["features"][: self.max_v_l].astype(
-        #                 np.float32
-        #             )
-        #         except:
-        #             _feat_path = join(_feat_dir, f"{vid}.npy")
-        #             _feat = np.load(_feat_path)[: self.max_v_l].astype(np.float32)
+        elif self.dset_name == "youtube_uni":
+            v_feat_list = []
+            for _feat_dir in self.v_feat_dirs:
+                # Only single npz files per directory
+                try:
+                    _feat_path = join(_feat_dir, f"{vid}.npz")
+                    _feat = np.load(_feat_path)["features"][: self.max_v_l].astype(
+                        np.float32
+                    )
+                except:
+                    _feat_path = join(_feat_dir, f"{vid}.npy")
+                    _feat = np.load(_feat_path)[: self.max_v_l].astype(np.float32)
 
-        #         # _feat = _feat_rgb
-        #         if self.normalize_v:
-        #             _feat = l2_normalize_np_array(_feat)
-        #         v_feat_list.append(_feat)
-        #     # some features are slightly longer than the others
-        #     min_len = min([len(e) for e in v_feat_list])
-        #     v_feat_list = [
-        #         e[:min_len] for e in v_feat_list
-        #     ]  # TODO do we need to cut the length over the min_len?
-        #     v_feat = np.concatenate(v_feat_list, axis=1)
-        if False:
-            assert True, "This dataset is not supported yet."
+                # _feat = _feat_rgb
+                if self.normalize_v:
+                    _feat = l2_normalize_np_array(_feat)
+                v_feat_list.append(_feat)
+            # some features are slightly longer than the others
+            min_len = min([len(e) for e in v_feat_list])
+            v_feat_list = [
+                e[:min_len] for e in v_feat_list
+            ]  # TODO do we need to cut the length over the min_len?
+            v_feat = np.concatenate(v_feat_list, axis=1)
+
         else:
             v_feat_list = []
             for _feat_dir in self.v_feat_dirs:

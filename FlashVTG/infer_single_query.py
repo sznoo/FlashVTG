@@ -10,9 +10,9 @@ import logging
 import sys
 
 
-
-sys.path.append('/home/intern/jinwoo/FlashVTG')
+sys.path.append("/home/intern/jinwoo/FlashVTG")
 logger = logging.getLogger(__name__)
+
 
 def setup_model(opt):
     """setup model/optimizer/scheduler and load checkpoints when needed"""
@@ -75,13 +75,14 @@ def setup_model(opt):
 
     return model, criterion, optimizer, lr_scheduler
 
+
 # 영상 feature 추출 함수 (개선된 버전)
-def extract_video_feature(video_path, device='cpu'):
+def extract_video_feature(video_path, device="cpu"):
     try:
         # pts_unit='sec'로 설정하여 경고 해결
-        video, _, info = read_video(video_path, pts_unit='sec')
+        video, _, info = read_video(video_path, pts_unit="sec")
         print(f"Video loaded: {video.shape}, FPS: {info.get('video_fps', 'unknown')}")
-        
+
         # 영상이 너무 길면 처음 16프레임만 사용
         if video.shape[0] > 16:
             video = video[:16]
@@ -90,12 +91,12 @@ def extract_video_feature(video_path, device='cpu'):
             last_frame = video[-1:]
             repeat_times = 16 - video.shape[0]
             video = torch.cat([video, last_frame.repeat(repeat_times, 1, 1, 1)], dim=0)
-        
+
         # 정규화 및 차원 변환
         video = video.float() / 255.0
         video = video.permute(0, 3, 1, 2)  # (T, C, H, W)
         video = video.unsqueeze(0).permute(0, 2, 1, 3, 4)  # (1, C, T, H, W)
-        
+
         # r3d_18 모델로 feature 추출
         model = r3d_18(pretrained=True).to(device)
         model.eval()
@@ -107,13 +108,16 @@ def extract_video_feature(video_path, device='cpu'):
         # 에러 시 더미 feature 반환
         return torch.zeros(512).numpy()
 
+
 # 쿼리 feature 추출 함수 (개선된 버전)
-def extract_text_feature(query, device='cpu'):
+def extract_text_feature(query, device="cpu"):
     try:
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        model = BertModel.from_pretrained('bert-base-uncased').to(device)
+        tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+        model = BertModel.from_pretrained("bert-base-uncased").to(device)
         model.eval()
-        inputs = tokenizer(query, return_tensors='pt', max_length=512, truncation=True, padding=True)
+        inputs = tokenizer(
+            query, return_tensors="pt", max_length=512, truncation=True, padding=True
+        )
         with torch.no_grad():
             outputs = model(**{k: v.to(device) for k, v in inputs.items()})
         return outputs.last_hidden_state.mean(dim=1).cpu().numpy().flatten()
@@ -122,14 +126,15 @@ def extract_text_feature(query, device='cpu'):
         # 에러 시 더미 feature 반환
         return torch.zeros(768).numpy()
 
+
 # 영상 duration 추출 함수 (개선된 버전)
 def extract_duration(video_path):
     try:
-        _, _, info = read_video(video_path, pts_unit='sec')
-        if 'duration' in info:
-            return float(info['duration'])
-        elif 'video_fps' in info and 'video_nframes' in info:
-            return float(info['video_nframes']) / float(info['video_fps'])
+        _, _, info = read_video(video_path, pts_unit="sec")
+        if "duration" in info:
+            return float(info["duration"])
+        elif "video_fps" in info and "video_nframes" in info:
+            return float(info["video_nframes"]) / float(info["video_fps"])
         else:
             print("Warning: Could not extract duration, using default 100.0")
             return 100.0
@@ -137,17 +142,18 @@ def extract_duration(video_path):
         print(f"Error extracting duration: {e}")
         return 100.0
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--video_path', type=str, required=True, help='영상 경로')
-    parser.add_argument('--query', type=str, required=True, help='쿼리 문장')
+    parser.add_argument("--video_path", type=str, required=True, help="영상 경로")
+    parser.add_argument("--query", type=str, required=True, help="쿼리 문장")
     args = parser.parse_args()
 
     # config, resume, device 자동 지정
-    config_path = 'data/MR.py'
-    resume_path = 'results/QVHighlights_SF+Clip/model_best.ckpt'
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    
+    config_path = "data/MR.py"
+    resume_path = "results/QVHighlights_SF+Clip/model_best.ckpt"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
     print(f"Using device: {device}")
     print(f"Video path: {args.video_path}")
     print(f"Query: {args.query}")
@@ -157,40 +163,41 @@ if __name__ == "__main__":
     print(f"Video duration: {duration:.2f} seconds")
 
     # 실시간 feature 추출
-    print('Extracting video feature...')
+    print("Extracting video feature...")
     video_feat = extract_video_feature(args.video_path, device=device)
-    print(f'Video feature shape: {video_feat.shape}')
-    
-    print('Extracting text feature...')
+    print(f"Video feature shape: {video_feat.shape}")
+
+    print("Extracting text feature...")
     text_feat = extract_text_feature(args.query, device=device)
-    print(f'Text feature shape: {text_feat.shape}')
+    print(f"Text feature shape: {text_feat.shape}")
 
     # FlashVTG 모델 옵션 세팅
     from FlashVTG.config import TestOptions
     import nncore
+
     opt = TestOptions().parse()
     opt.config = config_path
     opt.resume = resume_path
     opt.device = torch.device(device)
     opt.cfg = nncore.Config.from_file(opt.config)
-    opt.eval_split_name = 'test'
-    opt.results_dir = './results'
+    opt.eval_split_name = "test"
+    opt.results_dir = "./results"
 
     # 모델 로드
-    print('Loading model...')
+    print("Loading model...")
     model, criterion, _, _ = setup_model(opt)
     model.eval()
 
     # FlashVTG 모델 입력 포맷에 맞게 가공
-    print('Running inference...')
+    print("Running inference...")
     with torch.no_grad():
         model_inputs = {
-            'video_feat': torch.tensor(video_feat).unsqueeze(0).to(device),
-            'query_feat': torch.tensor(text_feat).unsqueeze(0).to(device),
-            'duration': torch.tensor([duration]).to(device)
+            "video_feat": torch.tensor(video_feat).unsqueeze(0).to(device),
+            "query_feat": torch.tensor(text_feat).unsqueeze(0).to(device),
+            "duration": torch.tensor([duration]).to(device),
         }
         outputs = model(**model_inputs)
 
     # 결과 출력
-    print('\n=== 예측 결과 ===')
-    print(json.dumps(outputs, indent=2, ensure_ascii=False, default=str)) 
+    print("\n=== 예측 결과 ===")
+    print(json.dumps(outputs, indent=2, ensure_ascii=False, default=str))

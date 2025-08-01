@@ -33,219 +33,10 @@ logging.basicConfig(
 )
 
 
-def post_processing_mr_nms(mr_res, nms_thd, max_before_nms, max_after_nms, nms_type):
-    mr_res_after_nms = []
-    for e in mr_res:
-        bnd = torch.tensor(e["pred_relevant_windows"])
-        for i in range(bnd.size(0)):
-            max_idx = bnd[i:, -1].argmax(dim=0)
-            bnd = nncore.swap_element(bnd, i, max_idx + i)
-            iou = temporal_iou(bnd[i, None, :-1], bnd[i + 1 :, :-1])[0]
-
-            if nms_type == "normal":
-                bnd[i + 1 :, -1][iou >= nms_thd] = 0
-            elif nms_type == "linear":
-                bnd[i + 1 :, -1] *= 1 - iou
-            else:
-                raise ValueError(f"Unknown nms_type: {nms_type}")
-
-        _, inds = bnd[:, -1].sort(descending=True)
-        bnd = bnd[inds]
-        e["pred_relevant_windows"] = bnd.tolist()
-
-        mr_res_after_nms.append(e)
-    return mr_res_after_nms
-
-
-def eval_epoch_post_processing(submission, opt, gt_data, save_submission_filename):
-    # IOU_THDS = (0.5, 0.7)
-    logger.info("Saving/Evaluating before nms results")
-    submission_path = os.path.join(opt.results_dir, save_submission_filename)
-    save_jsonl(submission, submission_path)
-
-    if opt.eval_split_name in ["val"]:  # since test_public has no GT
-        metrics = eval_submission(
-            submission, gt_data, verbose=opt.debug, match_number=not opt.debug
-        )
-        save_metrics_path = submission_path.replace(".jsonl", "_metrics.json")
-        save_json(metrics, save_metrics_path, save_pretty=True, sort_keys=False)
-        latest_file_paths = [submission_path, save_metrics_path]
-    else:
-        metrics = None
-        latest_file_paths = [
-            submission_path,
-        ]
-
-    if opt.nms_thd != -1:
-        logger.info("[MR] Performing nms with nms_thd {}".format(opt.nms_thd))
-        submission_after_nms = post_processing_mr_nms(
-            submission,
-            nms_thd=opt.nms_thd,
-            max_before_nms=opt.max_before_nms,
-            max_after_nms=opt.max_after_nms,
-            nms_type=opt.nms_type,
-        )
-
-        logger.info("Saving/Evaluating nms results")
-        submission_nms_path = submission_path.replace(
-            ".jsonl", "_nms_thd_{}.jsonl".format(opt.nms_thd)
-        )
-        save_jsonl(submission_after_nms, submission_nms_path)
-        if opt.eval_split_name == "val":
-            metrics_nms = eval_submission(
-                submission_after_nms,
-                gt_data,
-                verbose=opt.debug,
-                match_number=not opt.debug,
-            )
-            save_metrics_nms_path = submission_nms_path.replace(
-                ".jsonl", "_metrics.json"
-            )
-            save_json(
-                metrics_nms, save_metrics_nms_path, save_pretty=True, sort_keys=False
-            )
-            latest_file_paths += [submission_nms_path, save_metrics_nms_path]
-        else:
-            metrics_nms = None
-            latest_file_paths = [
-                submission_nms_path,
-            ]
-    else:
-        metrics_nms = None
-    return metrics, metrics_nms, latest_file_paths
-
-
-# for HL
-@torch.no_grad()
-def compute_hl_results(
-    model, eval_loader, opt, epoch_i=None, criterion=None, tb_writer=None
-):
-    model.eval()
-    if criterion:
-        assert eval_loader.dataset.load_labels
-        criterion.eval()
-
-    loss_meters = defaultdict(AverageMeter)
-    write_tb = tb_writer is not None and epoch_i is not None
-
-    mr_res = []
-
-    topk = 5  # top-5 map
-
-    video_ap_collected = []
-    for batch in tqdm(eval_loader, desc="compute st ed scores"):
-        query_meta = batch[0]
-
-        model_inputs, targets = prepare_batch_inputs(
-            batch[1], opt.device, non_blocking=opt.pin_memory
-        )
-
-        if targets is not None:
-            targets["label"] = batch[0]
-            targets["fps"] = torch.full((256,), 1 / opt.clip_length).to(
-                opt.device
-            )  # if datasets is qv, fps is 0.5, charades' is 1
-        else:
-            targets = {}
-
-        outputs = model(**model_inputs, targets=targets)
-
-        preds = outputs["saliency_scores"].clone().detach()
-
-        for meta, pred in zip(query_meta, preds):
-            pred = pred
-            label = meta["label"]  # raw label
-
-            video_ap = []
-            # Follow the UMT code "https://github.com/TencentARC/UMT/blob/main/datasets/tvsum.py"
-
-            if opt.dset_name in ["tvsum"]:
-                for i in range(20):
-                    pred = pred.cpu()
-                    cur_pred = pred[: len(label)]
-                    inds = torch.argsort(cur_pred, descending=True, dim=-1)
-
-                    # video_id = self.get_video_id(idx)
-                    cur_label = torch.Tensor(label)[:, i]
-                    cur_label = torch.where(cur_label > cur_label.median(), 1.0, 0.0)
-
-                    cur_label = cur_label[inds].tolist()[:topk]
-
-                    # if (num_gt := sum(cur_label)) == 0:
-                    num_gt = sum(cur_label)
-                    if num_gt == 0:
-                        video_ap.append(0)
-                        continue
-
-                    hits = ap = rec = 0
-                    prc = 1
-
-                    for j, gt in enumerate(cur_label):
-                        hits += gt
-
-                        _rec = hits / num_gt
-                        _prc = hits / (j + 1)
-
-                        ap += (_rec - rec) * (prc + _prc) / 2
-                        rec, prc = _rec, _prc
-
-                    video_ap.append(ap)
-
-            elif opt.dset_name in ["youtube_uni"]:
-                cur_pred = pred[: len(label)]
-                # if opt.dset_name == "tvsum_sfc":
-                cur_pred = cur_pred.cpu()
-                inds = torch.argsort(cur_pred, descending=True, dim=-1)
-
-                cur_label = torch.Tensor(label).squeeze()[inds].tolist()
-
-                num_gt = sum(cur_label)
-                if num_gt == 0:
-                    video_ap.append(0)
-                    continue
-
-                hits = ap = rec = 0
-                prc = 1
-
-                for j, gt in enumerate(cur_label):
-                    hits += gt
-
-                    _rec = hits / num_gt
-                    _prc = hits / (j + 1)
-
-                    ap += (_rec - rec) * (prc + _prc) / 2
-                    rec, prc = _rec, _prc
-
-                video_ap.append(float(ap))
-            else:
-                print("No such dataset")
-                exit(-1)
-
-            video_ap_collected.append(video_ap)
-
-    mean_ap = np.mean(video_ap_collected)
-    submmission = dict(mAP=round(mean_ap, 5))
-
-    # tensorboard writer
-    if write_tb and criterion:
-        for k, v in loss_meters.items():
-            tb_writer.add_scalar("Eval/{}".format(k), v.avg, epoch_i + 1)
-
-    return submmission, loss_meters
-
-
 # for MR
 @torch.no_grad()
-def compute_mr_results(
-    model, eval_loader, opt, epoch_i=None, criterion=None, tb_writer=None
-):
+def compute_mr_results(model, eval_loader, opt):
     model.eval()
-    if criterion:
-        assert eval_loader.dataset.load_labels
-        criterion.eval()
-
-    loss_meters = defaultdict(AverageMeter)
-    write_tb = tb_writer is not None and epoch_i is not None
 
     mr_res = []
     for batch in tqdm(eval_loader, desc="compute st ed scores"):
@@ -307,129 +98,18 @@ def compute_mr_results(
             )
             mr_res.append(cur_query_pred)
 
-        loss_dict = {k: v for k, v in outputs.items() if "loss" in k}
-        losses = sum(loss_dict.values())
-        loss_dict["loss_overall"] = float(losses)  # for logging only
-        for k, v in loss_dict.items():
-            loss_meters[k].update(float(v))
-
-    if write_tb and len(loss_meters) != 1:
-        for k, v in loss_meters.items():
-            tb_writer.add_scalar("Eval/{}".format(k), v.avg, epoch_i + 1)
-
-    if opt.dset_name in ["hl"]:
-        post_processor = PostProcessorDETR(
-            clip_length=opt.clip_length,
-            min_ts_val=0,
-            max_ts_val=150,
-            min_w_l=2,
-            max_w_l=150,
-            move_window_method="left",
-            process_func_names=("clip_ts", "round_multiple"),
-        )
-    elif opt.dset_name in ["charadesSTA"]:
-        if opt.v_feat_dim == 4096:  # vgg
-            post_processor = PostProcessorDETR(
-                clip_length=opt.clip_length,
-                min_ts_val=0,
-                max_ts_val=360,
-                min_w_l=12,
-                max_w_l=360,
-                move_window_method="left",
-                process_func_names=("clip_ts", "round_multiple"),
-            )
-        else:
-            post_processor = PostProcessorDETR(
-                clip_length=opt.clip_length,
-                min_ts_val=0,
-                max_ts_val=150,
-                min_w_l=2,
-                max_w_l=60,
-                move_window_method="left",
-                process_func_names=("clip_ts", "round_multiple"),
-            )
-    else:
-        post_processor = PostProcessorDETR(
-            clip_length=opt.clip_length,
-            min_ts_val=0,
-            max_ts_val=50000,
-            min_w_l=0,
-            max_w_l=50000,
-            move_window_method="left",
-            process_func_names=(["round_multiple"]),
-        )
-
-    mr_res = post_processor(mr_res)
-    return mr_res, loss_meters
-
-
-def get_eval_res(model, eval_loader, opt, epoch_i, criterion, tb_writer):
-    """compute and save query and video proposal embeddings"""
-    eval_res, eval_loss_meters = compute_mr_results(
-        model, eval_loader, opt, epoch_i, criterion, tb_writer
-    )  # list(dict)
-    return eval_res, eval_loss_meters
-
-
-def eval_epoch(
-    model,
-    eval_dataset,
-    opt,
-    save_submission_filename,
-    epoch_i=None,
-    criterion=None,
-    tb_writer=None,
-):
-    logger.info("Generate submissions")
-    model.eval()
-    if criterion is not None and eval_dataset.load_labels:
-        criterion.eval()
-    else:
-        criterion = None
-
-    if opt.dset_name == "tacos":
-        shuffle = True
-    else:
-        shuffle = False
-
-    eval_loader = DataLoader(
-        eval_dataset,
-        collate_fn=start_end_collate,
-        batch_size=opt.eval_bsz,
-        num_workers=opt.num_workers,
-        shuffle=shuffle,
-        pin_memory=opt.pin_memory,
+    post_processor = PostProcessorDETR(
+        clip_length=opt.clip_length,
+        min_ts_val=0,
+        max_ts_val=150,
+        min_w_l=2,
+        max_w_l=150,
+        move_window_method="left",
+        process_func_names=("clip_ts", "round_multiple"),
     )
 
-    # tvsum
-    if opt.dset_name in ["tvsum", "youtube_uni"]:
-        metrics, eval_loss_meters = compute_hl_results(
-            model, eval_loader, opt, epoch_i, criterion, tb_writer
-        )
-
-        # to match original save format
-        submission = [{"brief": metrics}]
-        submission_path = os.path.join(opt.results_dir, "latest_metric.jsonl")
-        save_jsonl(submission, submission_path)
-
-        return submission[0], submission[0], eval_loss_meters, [submission_path]
-
-    else:
-        submission, eval_loss_meters = get_eval_res(
-            model, eval_loader, opt, epoch_i, criterion, tb_writer
-        )
-
-        if opt.dset_name in ["charadesSTA", "tacos", "nlq"]:
-            new_submission = []
-            for s in submission:
-                s.pop("pred_saliency_scores", None)
-                new_submission.append(s)
-            submission = new_submission
-
-        metrics, metrics_nms, latest_file_paths = eval_epoch_post_processing(
-            submission, opt, eval_dataset.data, save_submission_filename
-        )
-        return metrics, metrics_nms, eval_loss_meters, latest_file_paths
+    mr_res = post_processor(mr_res)
+    return mr_res
 
 
 def setup_model(opt):
@@ -437,21 +117,10 @@ def setup_model(opt):
     logger.info("setup model/optimizer/scheduler")
     from FlashVTG.model import build_model1
 
-    model, criterion = build_model1(opt)
+    model, _ = build_model1(opt)
     if opt.device.type == "cuda":
         logger.info("CUDA enabled.")
         model.to(opt.device)
-        criterion.to(opt.device)
-
-    param_dicts = [
-        {
-            "params": [p for n, p in model.named_parameters() if p.requires_grad],
-            "lr": opt.lr,
-        },
-    ]
-    optimizer = torch.optim.AdamW(param_dicts, lr=opt.lr, weight_decay=opt.wd)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, opt.lr_drop, gamma=0.5)
-    # lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=15, min_lr=1e-4)
 
     if opt.resume_adapter is not None:
         logger.info(f"Load adapter checkpoint from {opt.resume_adapter}")
@@ -483,15 +152,13 @@ def setup_model(opt):
             # model.load_state_dict(checkpoint["state_dict"])
             model.load_state_dict(checkpoint["model"], strict=True)
         if opt.resume_all:
-            optimizer.load_state_dict(checkpoint["optimizer"])
-            lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
             opt.start_epoch = checkpoint["epoch"] + 1
     else:
         logger.warning(
             "If you intend to evaluate the model, please specify --resume with ckpt path"
         )
 
-    return model, criterion, optimizer, lr_scheduler
+    return model
 
 
 def start_inference(train_opt=None, split=None, splitfile=None):
@@ -538,24 +205,25 @@ def start_inference(train_opt=None, split=None, splitfile=None):
         txt_drop_ratio=0,
         dset_domain=opt.dset_domain,
     )
-    model, criterion, _, _ = setup_model(opt)
-    save_submission_filename = "hl_{}_submission.jsonl".format(opt.eval_split_name)
+    eval_loader = DataLoader(
+        eval_dataset,
+        collate_fn=start_end_collate,
+        batch_size=opt.eval_bsz,
+        num_workers=opt.num_workers,
+        shuffle=False,
+        pin_memory=opt.pin_memory,
+    )
+
+    model = setup_model(opt)
+    # save_submission_filename = "hl_{}_submission.jsonl".format(opt.eval_split_name)
 
     logger.info("Starting inference...")
+
     with torch.no_grad():
-        metrics_no_nms, metrics_nms, eval_loss_meters, latest_file_paths = eval_epoch(
-            model, eval_dataset, opt, save_submission_filename, criterion=criterion
-        )
-    if opt.eval_split_name == "val":
-        logger.info(
-            "metrics_no_nms {}".format(
-                pprint.pformat(metrics_no_nms["brief"], indent=4)
-            )
-        )
-    if metrics_nms is not None:
-        logger.info(
-            "metrics_nms {}".format(pprint.pformat(metrics_nms["brief"], indent=4))
-        )
+        logger.info("Generate submissions")
+        model.eval()
+        submissions = compute_mr_results(model, eval_loader, opt)
+    return submissions
 
 
 from sys import argv
@@ -564,4 +232,6 @@ if __name__ == "__main__":
     # split, splitfile = argv
     _, _, _, _, _, split, _, splitfile = argv
 
-    start_inference(split=split, splitfile=splitfile)
+    print(f"Running inference with split: {split}, splitfile: {splitfile}")
+    submissions = start_inference(split=split, splitfile=splitfile)
+    # print(submissions)
