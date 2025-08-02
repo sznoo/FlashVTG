@@ -161,15 +161,14 @@ def setup_model(opt):
     return model
 
 
-def start_inference(train_opt=None, split=None, splitfile=None):
+def start_inference(train_opt=None, testfile=None):
     if train_opt is not None:
         opt = TestOptions().parse(train_opt.a_feat_dir)
     else:
         opt = TestOptions().parse()
-    if split is not None:
-        opt.eval_split_name = split
-    if splitfile is not None:
-        opt.eval_path = splitfile
+
+    if testfile is not None:
+        opt.eval_path = testfile
 
     opt.cfg = nncore.Config.from_file(opt.config)
 
@@ -230,8 +229,9 @@ from sys import argv
 
 if __name__ == "__main__":
     # split, splitfile = argv
-    _, _, _, _, _, split, _, splitfile = argv
+    print(argv)
+    _, _, _, _, _, testfile = argv
 
-    print(f"Running inference with split: {split}, splitfile: {splitfile}")
-    submissions = start_inference(split=split, splitfile=splitfile)
-    # print(submissions)
+    print(f"Running inference with testfile: {testfile}")
+    submissions = start_inference(testfile=testfile)
+    print(submissions)
