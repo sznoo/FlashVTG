@@ -1,0 +1,1 @@
+bash FlashVTG/scripts/single_inference.sh data/MR.py results/single_QVHighlights_SF+Clip/model_best.ckpt
